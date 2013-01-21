@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <title>jQuery SynthEd Demo Page</title>
+        <link type="text/css" href="css/common.css" rel="stylesheet" />
+        <link type="text/css" href="css/ui-lightness/jquery-ui-1.9.2.custom.css" rel="stylesheet" />
+        <link type="text/css" href="css/jquery-synthed.css" rel="stylesheet" />
+        <script type="text/javascript" src="js/jquery-1.8.3.js"></script>
+        <script type="text/javascript" src="js/jquery-ui-1.9.2.custom.js"></script>
+        <script type="text/javascript" src="js/jquery-synthed.js"></script>
+        <script type="text/javascript" src="js/parsers/textile.js"></script>
+        <script type="text/javascript" src="js/jquery.themeswitcher.min.js"></script>
+        <script type="text/javascript">
+            $(function() {
+                //navigator.userLanguage = 'fr';
+
+                if ($.fn.themeswitcher) {
+                    $('#switcher')
+                        .css('padding-bottom', '8px')
+                        .before('<h4>Use the themeroller to dynamically change look and feel</h4>')
+                        .themeswitcher({imgpath: "images/"});
+                }
+
+
+                $('#synthed_simple').synthed({
+                    parser:'textile',
+                    updateElement: '#synthed_preview'
+                });
+
+                $('#synthed_preview').width($('#synthed_simple').width()).css('margin-top', '16px');
+
+                setTimeout(function() {
+                    $('#synthed_simple').synthed('insert', ' *WASSA!!!* ', true);
+                }, 3000);
+
+
+            });
+        </script>
+        <style type="text/css">
+
+            div.debug_uiControls {
+                margin-top: 16px;
+            }
+            div.debug_log {
+                height: 100px;
+                overflow: auto;
+                border: 1px solid black;
+                padding: 8px;
+                margin-top: 16px;
+            }
+            #synthed_preview {
+                border: 1px solid black;
+            }
+        </style>
+    </head>
+    <body>
+
+    <div id="content">
+
+        <a href="https://github.com/yanickrochon/jquery.synthed">
+            <img style="position: fixed; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png" alt="Fork me on GitHub">
+        </a>
+
+        <h1>Welcome to the jQuery SynthEd Widget !</h1>
+
+        <div id="switcher"></div>
+
+
+        <textarea id="synthed_simple" cols="80" rows="20">This *editor* has content.</textarea>
+
+        <div id="synthed_preview" class="ui-widget ui-widget-content"></div>
+
+    </div>
+
+    </body>
+</html>
