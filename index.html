@@ -25,14 +25,15 @@
 
                 $('#synthed_simple').synthed({
                     parser:'textile',
-                    updateElement: '#synthed_preview'
+                    updateElement: '#synthed_preview',
+                    toolbar: ''
                 });
 
                 $('#synthed_preview').width($('#synthed_simple').width()).css('margin-top', '16px');
 
-                setTimeout(function() {
-                    $('#synthed_simple').synthed('insert', ' *WASSA!!!* ', true);
-                }, 3000);
+                //setTimeout(function() {
+                //    $('#synthed_simple').synthed('insert', ' *WASSA!!!* ', true);
+                //}, 3000);
 
 
             });
@@ -58,7 +59,7 @@
 
     <div id="content">
 
-        <a href="https://github.com/yanickrochon/jquery.synthed">
+        <a href="https://github.com/yanickrochon/synthed">
             <img style="position: fixed; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png" alt="Fork me on GitHub">
         </a>
 
@@ -66,6 +67,7 @@
 
         <div id="switcher"></div>
 
+        <div id="synthed_toolbar"></div>
 
         <textarea id="synthed_simple" cols="80" rows="20">This *editor* has content.</textarea>
 

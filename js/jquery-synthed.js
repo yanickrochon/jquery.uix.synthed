@@ -61,6 +61,8 @@ $.widget("uix.synthed", {
             fontFamily: this.element.css('font-family')
         };
 
+        if (this.options.toolbar != null)
+            this._setupToolbar();
 
         this.element.addClass(WIDGET_CSS_CLASS);
 
@@ -85,6 +87,67 @@ $.widget("uix.synthed", {
         this.element.trigger('change');
     },
 
+    _setupToolbar: function() {
+        if (this.options.toolbar === null ||
+            this.options.toolbar === undefined ||
+            this.options.toolbar === false ||
+            !$.uix.synthed.Toolbars[this.options.toolbar])
+        {
+            return;
+        }
+
+        if (typeof this.options.toolbarElement === 'string') {
+            this._toolbarElement = $(this.options.toolbarElement);
+        } else if (this.options.toolbarElement) {
+            this._toolbarElement = this.options.toolbarElement;
+        } else {
+            this._toolbarElement = $('<div></div>').insertBefore(this.element);
+        }
+        this._toolbarElement.addClass('ui-widget-header uix-synthed-toolbar').width(this.element.width() - 8);
+
+        var createButton = $.proxy(function(ctrl,container) {
+            var control = $.uix.synthed.Controls[ctrl];
+            var button;
+
+            if (typeof control['button'] === 'string') {
+                button = $('<button></button>').button({'label':control['button']});
+            } else if (typeof control['button'] === 'function') {
+                button = control['button']();
+            } else if (control['button']) {
+                button = control['button'];
+            }
+
+            button.attr('title', control['description']).click($.proxy(function(evt) {
+                var sel = getInputSelection(this.element.focus()[0]);
+                var oldSel = { start: sel.start, end: sel.end };
+
+                this.element.prop('disabled', true);
+                var rejected = control['action'].call(this.element[0], sel, $.proxy(function(value) {
+                    if (rejected) return;
+
+                    this.element.prop('disabled', false);
+
+                    if (value)
+                        this.insert(value, sel.start - oldSel.start, sel.end - oldSel.start);   // insert with relative selection
+                }, this));
+
+                if (rejected)
+                    this.element.prop('disabled', false);
+
+            }, this)).appendTo(container);
+
+        }, this);
+
+        $.each($.uix.synthed.Toolbars[this.options.toolbar], $.proxy(function(i,ctrl) {
+            var btnSet = ctrl.split(",");
+            var container = $('<span></span>').appendTo(this._toolbarElement);
+            $.each(btnSet, function(i,ctrl) {
+                createButton($.trim(ctrl), container);
+            });
+            container.buttonset();
+        }, this));
+    },
+
     _triggerUpdate: function() {
         var evt = $.Event(WIDGET_EVENT_BEFORE_PARSE);
         this.element.trigger(evt);
@@ -107,6 +170,12 @@ $.widget("uix.synthed", {
     _setOption: function(key, value) {
         if (key === 'updateDelay' || key === 'updateStack') {
             this._applyBindings(true);
+        } else if (key === 'toolbarElement' || key === 'toolbar') {
+            if (this._toolbarElement) {
+                this._toolbarElement.remove();
+                this._toolbarElement = null;
+            }
+            this._setupToolbar();
         }
         this._superApply( arguments );
     },
@@ -119,19 +188,19 @@ $.widget("uix.synthed", {
         this._refresh();
     },
 
-    insert: function(text, select) {
+    insert: function(text, selectStart, selectEnd) {
         text = text || '';
-        var sel = getInputSelection(this.element[0]);
-        var val = this.element.val();
 
+        var sel = getInputSelection(this.element.focus()[0]);
         if ((sel.start == sel.end) && (text.length == 0)) return;  // nothing to do!
 
-        this.element.val( val.slice(0, sel.start) + text + val.slice(sel.end, val.length) );
+        insertText(this.element[0], text, sel);
 
-        if (!select)
-            sel.end = (sel.start += text.length);
-        else
-            sel.end = sel.start + text.length;
+        if (selectEnd)
+            sel.end = sel.start + selectEnd;
+
+        if (selectStart)
+            sel.start += selectStart;
 
         setInputSelection(this.element[0], sel.start, sel.end);
 
@@ -186,7 +255,12 @@ var AsyncCall = function(fn, ctx, delay, stack) {
     };
 };
 
-
+/**
+ * Return an object { start, end } identifying the current textarea caret positions
+ *
+ * @param el DOMelement  MUST be a textarea element
+ * @return object
+ */
 function getInputSelection(el) {
     var start = 0, end = 0, normalizedValue, range,
         textInputRange, len, endRange;
@@ -233,10 +307,16 @@ function getInputSelection(el) {
     };
 }
 
+/**
+ * Fix end of line selection by returning a correcting offset (used by setInputSelection)
+ */
 function offsetToRangeCharacterMove(el, offset) {
     return offset - (el.value.slice(0, offset).split("\r\n").length - 1);
 }
 
+/**
+ * Set the selection range
+ */
 function setInputSelection(el, startOffset, endOffset) {
     if (endOffset === undefined || endOffset === null) endOffset = startOffset;
 
@@ -257,23 +337,124 @@ function setInputSelection(el, startOffset, endOffset) {
     }
 };
 
+/**
+ * Insert some text into the specified textarea element at the caret position.
+ * The argument `sel` should be an object { start, end } of the position where
+ * the text should be inserted as a fallback measure in the event that the browser
+ * does not support a text insertion event (thus preserving the undo/redo stack).
+ *
+ * @param el DOMelement    should be a textarea element
+ * @param text string      the text to insert
+ * @param sel object       the position where the text should be inserted
+ */
+function insertText(el, text, sel) {
+    if (document.createEvent) {
+        var event = document.createEvent('TextEvent');
 
-$.uix.synthed.GlobalOptions = {
-    paragraphStart: '<p>',
-    paragraphEnd: '</p>'
+        event.initTextEvent('textInput', true, true, null, text);
+        el.dispatchEvent(event); // fire the event on the the textarea
+    } else if (document.execCommand) {
+        el.focus();
+        document.execCommand('insertText', false, text);
+    } else {
+        var val = el.value;
+        el.value = val.slice(0, sel.start) + text + val.slice(sel.end, val.length);
+    }
 };
 
+
+/**
+ * Utility function for the markup built-in controls.
+ * See $.uix.synthed.Controls for more information
+ */
+function wrapWords(el, sel, delimiter) {
+    var value = delimiter + el.value.substring(sel.start, sel.end) + delimiter;
+    var incStart = 1;
+    var incEnd = 1;
+    if (sel.start > 0 && /[^ \t]/.test(el.value.charAt(sel.start - 1))) {
+        ++incStart; ++incEnd;
+        value = " " + value;
+    }
+    if (sel.end < el.value.length && /[^ \t]/.test(el.value.charAt(sel.end))) {
+        value += " ";
+    }
+    sel.start += incStart; sel.end += incEnd;
+    return value;
+};
+
+/**
+ * Table of built-in "parsers". When supplying the 'parser' widget
+ * option, it's value should indicate one of the parsers declared here.
+ * Included scripts may declare such parser as :
+ *
+ *    $.uix.synthed.Parsers['nameOfParser'] = function(text) { ... }
+ *
+ * where the function receives the entire textarea value to parse and
+ * should return the parsed text (HTML) to update the preview element.
+ */
 $.uix.synthed.Parsers = $.extend($.uix.synthed.Parsers || {}, {
     '': function(text) { return text; },
     'pre': function(text) { return '<pre>' + text + '</pre>'; }        // just put this inside preformatted block
 });
 
+/**
+ * Table of available toolbars. When supplying the 'toolbar' widget
+ * option, it's value should indicate one of the toolbars delcared here.
+ * Included scripts may declare such toolbar as :
+ *
+ *    $.uix.synthed.TOolbars['toolbarName'] = array of buttons
+ *
+ * For example : ['button1', 'button2'] will create a toolbar with two
+ *               separate controls.
+ *               ['button1,'button2', 'button3'] will create a toolbar
+ *               with two controls in a set and a separate control
+ *
+ * All controls must exist!
+ */
 $.uix.synthed.Toolbars = $.extend($.uix.synthed.Toolbars || {}, {
-    'default': [
-        { 'button':'B', 'action': function(t) { return '*' + $.trim(t) + '*'; } },
-        { 'button':'I', 'action': function(t) { return '_' + $.trim(t) + '_'; } },
-        { 'button':'U', 'action': function(t) { return '+' + $.trim(t) + '+'; } }
-    ]
+    '': ['bold,italic,underline']
 });
+
+/**
+ * Table of available controls. All controls in all toolbars should
+ * be declared in this table. Each entry key is the toolbar control
+ * name, and it's associated value is the control settings. Where :
+ *
+ *   'button'      {string | function | jQueryElement}
+ *                 A string (label), a function that should return a jQuery
+ *                 element, or a jQuery element itself that will be used to
+ *                 create a button from. (less the string type, all returning
+ *                 values should already have initialized a jQuery UI Button)
+ *  'description'  {string}
+ *                 Basically, the button title (will be applied to the button)
+ *  'action'       {function}
+ *                 An action function that should handle the text insertion. If
+ *                 this function returns false, the action will be cancelled.
+ *                 For convenience, the function is supplied with two arguments;
+ *                 the selection object { start, end }, and a callback funciton
+ *                 that should receive only one argument; the text to insert.
+ *                 If the callback function is called with an empty argument
+ *                 value, no text will be inserted. If the selection object is
+ *                 modified at any moment, the changes will be reflected in the
+ *                 textarea selection once the text is inserted.
+ */
+$.uix.synthed.Controls = $.extend($.uix.synthed.Controls || {}, {
+    'bold': {
+        'button': '<strong>B</strong>',
+        'description': 'Bold',
+        'action': function(selection, fn) { fn(wrapWords(this, selection, "*")); }
+    },
+    'italic': {
+        'button': '<em>I</em>',
+        'description': 'Italic',
+        'action': function(selection, fn) { fn(wrapWords(this, selection, "_")); }
+    },
+    'underline': {
+        'button': '<span style="text-decoration:underline;">U</span>',
+        'description': 'Underline',
+        'action': function(selection, fn) { fn(wrapWords(this, selection, "+")); }
+    }
+});
+
 
 })(jQuery);
