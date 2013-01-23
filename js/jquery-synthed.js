@@ -109,15 +109,17 @@ $.widget("uix.synthed", {
             var control = $.uix.synthed.Controls[ctrl];
             var button;
 
-            if (typeof control['button'] === 'string') {
-                button = $('<button></button>').button({'label':control['button']});
-            } else if (typeof control['button'] === 'function') {
-                button = control['button']();
-            } else if (control['button']) {
-                button = control['button'];
+            if (typeof control['widget'] === 'string') {
+                button = $('<button></button>').button({'label':control['widget']});
+            } else if (typeof control['widget'] === 'function') {
+                button = control['widget']();
+            } else if (control['widget']) {
+                button = control['widget'];
             }
 
             button.attr('title', control['description']).click($.proxy(function(evt) {
+                if (this.element.prop('disabled')) return;  // disable button action if textare is disabled
+
                 var sel = getInputSelection(this.element.focus()[0]);
                 var oldSel = { start: sel.start, end: sel.end };
 
@@ -440,17 +442,17 @@ $.uix.synthed.Toolbars = $.extend($.uix.synthed.Toolbars || {}, {
  */
 $.uix.synthed.Controls = $.extend($.uix.synthed.Controls || {}, {
     'bold': {
-        'button': '<strong>B</strong>',
+        'widget': '<strong>B</strong>',
         'description': 'Bold',
         'action': function(selection, fn) { fn(wrapWords(this, selection, "*")); }
     },
     'italic': {
-        'button': '<em>I</em>',
+        'widget': '<em>I</em>',
         'description': 'Italic',
         'action': function(selection, fn) { fn(wrapWords(this, selection, "_")); }
     },
     'underline': {
-        'button': '<span style="text-decoration:underline;">U</span>',
+        'widget': '<span style="text-decoration:underline;">U</span>',
         'description': 'Underline',
         'action': function(selection, fn) { fn(wrapWords(this, selection, "+")); }
     }

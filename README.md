@@ -23,8 +23,8 @@ Usage
     // transform the specified textarea into a textile markup editor (require ./parsers/textile.js)
     $('#textarea').synthed({ parser: 'textile' });
 
-    // insert and select text (false to move caret to the end of inserted text)
-    $('textarea').synthed('insert', '*Specify text*', true);
+    // insert and select text (last arguments reposition selection relative to it's original location)
+    $('textarea').synthed('insert', '*Specify text*', 1, 13);
 
     // restore original element behaviour
     $('textarea').synthed('destroy');
