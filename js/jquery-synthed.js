@@ -1,5 +1,5 @@
 /*
- * jQuery UIx Synthed
+ * jQuery UIx SynthEd
  *
  * Authors:
  *  Yanick Rochon (yanick.rochon[at]gmail[dot]com)
@@ -35,7 +35,7 @@ $.widget("uix.synthed", {
         height: null,                    // int; the editor height. If null, uses already defined width (default: null)
         width: null,                     // int; the editor width. If null, uses already defined width (default: null)
         parser: '',                      // string; the parser to use when converting the text inside the textarea (default: '')
-        toolbarElement: null,            // string, Element; the element that will be used to render the toolbar
+        toolbarElement: null,            // string, Element; the element that will be used to render the toolbar (default: null)
         toolbar: null,                   // string; the toolbar to use (see $.uix.synthed.Toolbars). Will create new element
                                          //         before textarea if toolbarElement is null and toolbar is not null. (default: null)
         updateElement: null,             // string, Element; the element to update after text parsed event (default: null)
@@ -45,7 +45,7 @@ $.widget("uix.synthed", {
 
     _create: function() {
         if (this.element[0].nodeName.toLowerCase() !== 'textarea') {
-            throw "Synthed must be initialized with a textarea";
+            throw "SynthEd must be initialized with a textarea";
         }
 
         this.options.parser = this.options.parser || '';
@@ -211,6 +211,9 @@ $.widget("uix.synthed", {
 
     destroy: function() {
         this._super();
+
+        if (this._toolbarElement) this._toolbarElement.remove();
+        this._toolbarElement = null;
 
         this.element
             .removeClass(WIDGET_CSS_CLASS)
